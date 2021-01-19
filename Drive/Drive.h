@@ -64,13 +64,13 @@ public:
 
 	typedef enum _PARAMETER_ {
 		GO_MP = 420,    //前进一小步码盘
-		SPEED = 80,     //速度
+		SPEED = 70,     //速度
 		B_DELAY = 480,  //半转延时
 		//L_MP   = 400, //左半转码盘（预留）  
 		//R_MP   = 400, //右半转码盘（预留）
 		GO_C_K = 600,   //出立体车库时的码盘
-		BACK_C_K = 600, //进立体车库时所需的码盘
-		GO_D_X = 1300,  //通过地形标志物所需的码盘
+		BACK_C_K = 600, //进立体车库时所需的码盘600
+		GO_D_X = 1400,  //通过地形标志物所需的码盘
 	}PARAMETER;
 
 	uint8_t HW_Dimming1[4] = { 0x00,0xff,0x0c,~(0x0c) };		//光源档位 加1 命令	修改
@@ -92,7 +92,9 @@ public:
 	void Double_Led(uint8_t res);      //打开双闪 加 蜂鸣器 //  入库完成
 	//uint8_t Check_Data(uint8_t *data); //数据校验求出校验和
 
+	void FX_Correct_back();
 
+	char CheckRoad(char dir, char Alpha, char Num);
 	//基本运动控制
 	void ZH_XJ(uint16_t xj_mode);
 	void GO(uint16_t go_mp);

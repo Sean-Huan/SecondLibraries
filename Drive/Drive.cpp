@@ -1,6 +1,8 @@
 #include "Drive.h"
 #include "Openmv.h"
 
+int getLightLevel = 1;
+
 _Drive Drive;
 
 _Drive::_Drive()
@@ -138,7 +140,32 @@ void _Drive::FX_Correct(uint8_t mode=1, uint8_t cont = 3,uint16_t mp=350)
 	}
 
 }
+//方向矫正测距
+void _Drive::FX_Correct_back()
+{
+	//DCMotor.Back_Black_Line();//后退到十字路口
+	//DCMotor.CarTrack_MP(350, 70);//码盘循迹
+	//DCMotor.Back_Black_Line();//后退到十字路口
+	//DCMotor.CarTrack_MP(350, 70);//码盘循迹
+	//DCMotor.Back_Black_Line();//后退到十字路口
 
+
+
+		
+		DCMotor.Back(70, 800);
+		DCMotor.CarTrack(60);    //普循
+		
+		for (int i = 0; i < 2; i++)
+		{
+			DCMotor.Back(70, 700);
+			DCMotor.CarTrack(50);    //普循
+		}
+		//DCMotor.CarTrack_MP(mp, 30);//码盘循迹
+		/*DCMotor.Back_Black_Line();//后退到十字路口*/
+
+	//DCMotor.Back(70, 200);
+	//DCMotor.CarTrack(40);    //普循
+}
 
 /*
 功能：转弯
@@ -441,6 +468,7 @@ void _Drive::Beeper()
 {
 	//  打开报警器
 	uint8_t HW_K[6] = { 0x03,0x05,0x14,0x45,0xDE,0x92 };
+	//uint8_t HW_K[6] = { 0x01,0x02,0x02,0x04,0x07,0x03 };
 	Infrare.Transmition(HW_K, 6);
 }
 
@@ -633,6 +661,7 @@ void _Drive::C_K_Set_Layer(A_B a_b, uint8_t layer)
 	else {   
 		c_k_com[1] = 0x05;
 	}
+	
 	c_k_com[3] = layer;
 	memset(ZigBee_command, 0, sizeof(ZigBee_command));
 	Clear_ZigBee_Data();              //清除数据 
@@ -645,7 +674,7 @@ void _Drive::C_K_Set_Layer(A_B a_b, uint8_t layer)
 			BEEP.TurnOn();
 			delay(100);
 			BEEP.TurnOff();
-			delay(100);
+			delay(3000);
 			break;
 		}
 	}
@@ -768,7 +797,11 @@ void _Drive:: Task_END_Data_Send()
 {
 	for (int j = 0; j < 6; j++)
 	{
-		ZigBee_back[2] = 0xD1;
+		ZigBee_back[2] = 0x41;
+		ZigBee_back[3] = 0xAA;
+		for (int i = 0; i < 6; i++) {
+			ZigBee_back[i + 4] = Openmv.qr_data[i];
+		}
 		ExtSRAMInterface.ExMem_Write_Bytes(0x6080, ZigBee_back, 12);  //发送忙碌
 		delay(200);
 	}
@@ -792,58 +825,390 @@ void _Drive::Get_JL_Value()
 {
 	ZigBee_back[3] = uint8_t(JL_Z);
 }
-
+//上1，右2，下3，左4.
+char _Drive::CheckRoad(char dir, char Alpha, char Num) {
+	if (dir == 1) {
+		if ((Alpha == -2) && (Num == 0)) {
+			//Left
+			DCMotor.TurnLeft(SPEED);
+			delay(500);
+			ZH_XJ(X);
+			delay(500);
+			dir = 4;
+		}
+		else if ((Alpha == 0) && (Num == -2)) {
+			//FW
+			ZH_XJ(X);
+			delay(500);
+		}
+		else if ((Alpha == 2) && (Num == 0)) {
+			//Right
+			DCMotor.TurnRight(SPEED);
+			delay(500);
+			ZH_XJ(X);
+			delay(500);
+			dir = 2;
+		}
+		else if ((Alpha == -1) && (Num == 0)) {
+			//Left
+			DCMotor.TurnLeft(SPEED);
+			delay(500);
+			DCMotor.Go(SPEED, 1260);
+			delay(500);
+			dir = 4;
+		}
+		else if ((Alpha == 0) && (Num == -1)) {
+			//FW
+			DCMotor.Go(SPEED, 1260);
+			delay(500);
+		}
+		else if ((Alpha == 1) && (Num == 0)) {
+			//Right
+			DCMotor.TurnRight(SPEED);
+			delay(500);
+			DCMotor.Go(SPEED, 1260);
+			delay(500);
+			dir = 2;
+		}
+		else if ((Alpha == 0) && (Num == 2)) {
+			DCMotor.TurnRight(SPEED);
+			delay(500);
+			DCMotor.TurnRight(SPEED);
+			delay(500);
+			ZH_XJ(X);
+			delay(500);
+			dir = 3;
+		}
+	}
+	else if (dir == 2) {
+		if ((Alpha == 0) && (Num == -2)) {
+			//Left
+			DCMotor.TurnLeft(SPEED);
+			delay(500);
+			ZH_XJ(X);
+			delay(500);
+			dir = 1;
+		}
+		else if ((Alpha == 2) && (Num == 0)) {
+			//FW
+			ZH_XJ(X);
+			delay(500);
+		}
+		else if ((Alpha == 0) && (Num == 2)) {
+			//Right
+			DCMotor.TurnRight(SPEED);
+			delay(500);
+			ZH_XJ(X);
+			delay(500);
+			dir = 3;
+		}
+		else if ((Alpha == 0) && (Num == -1)) {
+			//Left
+			DCMotor.TurnLeft(SPEED);
+			delay(500);
+			DCMotor.Go(SPEED, 1260);
+			delay(500);
+			dir = 1;
+		}
+		else if ((Alpha == 1) && (Num == 0)) {
+			//FW
+			DCMotor.Go(SPEED, 1260);
+			delay(500);
+		}
+		else if ((Alpha == 0) && (Num == 1)) {
+			//Right
+			DCMotor.TurnRight(SPEED);
+			delay(500);
+			DCMotor.Go(SPEED, 1260);
+			delay(500);
+			dir = 3;
+		}
+		else if ((Alpha == -2) && (Num == 0)) {
+			DCMotor.TurnRight(SPEED);
+			delay(500);
+			DCMotor.TurnRight(SPEED);
+			delay(500);
+			ZH_XJ(X);
+			delay(500);
+			dir = 4;
+		}
+	}
+	else if (dir == 3) {
+		if ((Alpha == 2) && (Num == 0)) {
+			//Left
+			DCMotor.TurnLeft(SPEED);
+			delay(500);
+			ZH_XJ(X);
+			delay(500);
+			dir = 2;
+		}
+		else if ((Alpha == 0) && (Num == 2)) {
+			//FW
+			ZH_XJ(X);
+			delay(500);
+		}
+		else if ((Alpha == -2) && (Num == 0)) {
+			//Right
+			DCMotor.TurnRight(SPEED);
+			delay(500);
+			ZH_XJ(X);
+			delay(500);
+			dir = 4;
+		}
+		else if ((Alpha == 1) && (Num == 0)) {
+			//Left
+			DCMotor.TurnLeft(SPEED);
+			delay(500);
+			DCMotor.Go(SPEED, 1260);
+			delay(500);
+			dir = 2;
+		}
+		else if ((Alpha == 0) && (Num == 1)) {
+			//FW
+			DCMotor.Go(SPEED, 1260);
+			delay(500);
+		}
+		else if ((Alpha == -1) && (Num == 0)) {
+			//Right
+			DCMotor.TurnRight(SPEED);
+			delay(500);
+			DCMotor.Go(SPEED, 1260);
+			delay(500);
+			dir = 4;
+		}
+		else if ((Alpha == 0) && (Num == -2)) {
+			DCMotor.TurnRight(SPEED);
+			delay(500);
+			DCMotor.TurnRight(SPEED);
+			delay(500);
+			ZH_XJ(X);
+			delay(500);
+			dir = 1;
+		}
+	}
+	else if (dir == 4) {
+		if ((Alpha == 0) && (Num == 2)) {
+			//Left
+			DCMotor.TurnLeft(SPEED);
+			delay(500);
+			ZH_XJ(X);
+			delay(500);
+			dir = 3;
+		}
+		else if ((Alpha == -2) && (Num == 0)) {
+			//FW
+			ZH_XJ(X);
+			delay(500);
+		}
+		else if ((Alpha == 0) && (Num == -2)) {
+			//Right
+			DCMotor.TurnRight(SPEED);
+			delay(500);
+			ZH_XJ(X);
+			delay(500);
+			dir = 1;
+		}
+		else if ((Alpha == 0) && (Num == 1)) {
+			//Left
+			DCMotor.TurnLeft(SPEED);
+			delay(500);
+			DCMotor.Go(SPEED, 1260);
+			delay(500);
+			dir = 3;
+		}
+		else if ((Alpha == -1) && (Num == 0)) {
+			//FW
+			DCMotor.Go(SPEED, 1260);
+			delay(500);
+		}
+		else if ((Alpha == 0) && (Num == -1)) {
+			//Right
+			DCMotor.TurnRight(SPEED);
+			delay(500);
+			DCMotor.Go(SPEED, 1260);
+			delay(500);
+			dir = 1;
+		}
+		else if ((Alpha == 2) && (Num == 0)) {
+			DCMotor.TurnRight(SPEED);
+			delay(500);
+			DCMotor.TurnRight(SPEED);
+			delay(500);
+			ZH_XJ(X);
+			delay(500);
+			dir = 2;
+		}
+	}
+	return dir;
+}
 /*
 功能：全自动执行
 参数：AUTO_MODE  对应0~10个路线
 */
+uint8_t roadWay[20];
+uint8_t OpenCode[] = { 0x01,0x02,0x02,0x04,0x07,0x03 };
 void _Drive::Auto_Drive(AUTO_MODE auto_mode)
 {
 	uint8_t rgb_data[3];
 	uint8_t layer = 0;
+	int dir = 2;
 	switch (auto_mode)
 	{
 		case AUTO_01:
-			//出库
-			C_K_Set_Layer(B, 1); 
-			GO(GO_C_K);
-			ZH_XJ(X_R);
-			ZH_XJ(P_X);
+			BEEP.TurnOn();
+			delay(200);
+			BEEP.TurnOff();
+			delay(200);
 
-			//到达D2识别交通灯
-			Openmv.Traffic_Distinguish(Drive.B);
-			GO(GO_MP);
-			ZH_XJ(X_L);
-			ZH_XJ(X_R);
+			if (roadWay[6] == 1) {
+				DCMotor.TurnLeft(SPEED);
+				delay(500);
+				DCMotor.TurnLeft(SPEED);
+				delay(500);
+			}
 
-			//到达B4识别图形
-			FX_Correct(1,3,500);    //调整车头
-			Csb();                  //超声波测距
-			Get_JL_Value();         //获取距离值 
-			Openmv.Figure_Distinguish(rgb_data); //图形识别
-			Get_Figure_Data(rgb_data);   //获取图形识别结果
-			Task_END_Data_Send();   //给主车反馈数据
-			GO(GO_MP);              //前进一小步到达十字路口中心
-			ZH_XJ(L_X);
-			
-			//到达B6识别二维码
-			ZW(R);
-			ZW(R_B);
-			layer = Openmv.QR_Distinguish(Drive.A);   //二维码识别
-			ZW(R_B);
+			ZH_XJ(X);
+			delay(500);
 
-			//入库
-			C_K_Set_Layer(A, 1);     //从车二维码为立体车库层数
-			FX_Correct(2,2,800);     //调整车头
-			BACK(BACK_C_K);          //入库
-			C_K_Set_Layer(A, layer); //从车二维码为立体车库层数
+			DCMotor.TurnLeft(SPEED);
+			delay(500);
+
+			ZH_XJ(X);
+			delay(500);
+
+			DCMotor.TurnLeft(SPEED);
+			delay(500);
+
+			ZH_XJ(X);
+			delay(500);
+
+			DCMotor.TurnLeft(SPEED);
+			delay(500);
+			ZW(L_B);
+			delay(500);
+			Beeper(roadWay);
+			delay(500);
+
+			DCMotor.TurnLeft(SPEED);
+			delay(500);
+
+
+
+			if (roadWay[7] == 1) {
+				ZH_XJ(X);
+				delay(500);
+
+				DCMotor.TurnLeft(SPEED);
+				delay(500);
+				DCMotor.TurnLeft(SPEED);
+				delay(500);
+			}
+			else if (roadWay[7] == 2) {
+				ZH_XJ(X);
+				delay(500);
+
+				DCMotor.TurnRight(SPEED);
+				delay(500);
+				ZH_XJ(X);
+				delay(500);
+				ZH_XJ(X);
+				delay(500);
+				DCMotor.TurnRight(SPEED);
+				delay(500);
+			}
+			else if (roadWay[7] == 3) {
+				ZH_XJ(X);
+				delay(500);
+
+				DCMotor.TurnRight(SPEED);
+				delay(500);
+				ZH_XJ(X);
+				delay(500);
+				DCMotor.TurnRight(SPEED);
+				delay(500);
+			}
+
+			FX_Correct();
+			delay(500);
+			DCMotor.Back(SPEED, BACK_C_K);
+			delay(500);
+			Task_END_Data_Send();
+
 			break;
 		case AUTO_02:
+			if (roadWay[3] == 'U') {
+				DCMotor.TurnRight(SPEED);
+				delay(500);
+			}
+			else if (roadWay[3] == 'D') {
+				DCMotor.TurnLeft(SPEED);
+				delay(500);
+			}
+
+			if ((roadWay[1] == 'B') && (roadWay[2] == '6')) {
+				ZH_XJ(X);
+				delay(500);
+			}
+
+			ZH_XJ(X);
+			delay(500);
 			
+			uint8_t TFT_LockLoc[8] = { 0x55,0x0B,0x10,0x00,roadWay[4],0x00,0x00,0xBB };
+			ZigBee_Data_Send(TFT_LockLoc);
+			/*for (int i = 0; i < roadWay[4]; i++) {
+				TFT_FY(A, 2);
+				delay(500);
+			}*/
+
+			DCMotor.TurnLeft(SPEED);
+			delay(500);
+			ZH_XJ(X);
+			delay(500);
+
+			DCMotor.TurnLeft(SPEED);
+			delay(500);
+			ZH_XJ(X);
+			delay(500);
+
+			DCMotor.TurnRight(SPEED);
+			delay(500);
+			ZW(R_B);
+			delay(500);
+			Beeper();
+			DCMotor.TurnLeft(SPEED);
+			delay(500);
+
+			ZH_XJ(X);
+			delay(500);
+
+			uint8_t TFT_GetLight[8] = { 0x55,0x04,0x04,0x00,0x00,Get_Light(),0x00,0xBB };
+			ZigBee_Data_Send(TFT_GetLight);
+
+			DCMotor.TurnLeft(SPEED);
+			delay(500);
+			ZH_XJ(X);
+			delay(500);
+
+			DCMotor.TurnLeft(SPEED);
+			delay(500);
+			ZH_XJ(X);
+			delay(500);
+
+			ZH_XJ(X);
+			delay(500);
+
+			DCMotor.TurnLeft(SPEED);
+			delay(500);
+			DCMotor.TurnLeft(SPEED);
+			delay(500);
+			FX_Correct();
+
+			DCMotor.Back(SPEED, BACK_C_K);
+			Task_END_Data_Send();
 			break;
 		case AUTO_03:  
 			Csb();           //超声波测距
-			Get_JL_Value();  //获取距离值 
+			Get_JL_Value();  //获取距离值
 			ZigBee_back[2] = 0xD1;
 			ExtSRAMInterface.ExMem_Write_Bytes(0x6080, ZigBee_back, 12);  //发送忙碌
 			break;
@@ -866,12 +1231,14 @@ void _Drive::Auto_Drive(AUTO_MODE auto_mode)
 void _Drive::Analyze_Handle(uint8_t *com)
 {
 	uint8_t rgb_data[3];
-	switch (com[3])   //com[3] 为要启动的全自动路线
-	{
+		switch (com[3])   //com[3] 为要启动的全自动路线
+		{
 		case 0x01:      //全自动启动  
+			getLightLevel = com[5];
 			Auto_Drive(com[4]);
 			break;
 		case 0x02:      //二维码识别
+			BEEP.TurnOn();
 			Openmv.QR_Distinguish(Drive.A);
 			break;
 		case 0x03:      //交通识别
@@ -888,7 +1255,7 @@ void _Drive::Analyze_Handle(uint8_t *com)
 			break;
 		case 0x06:
 			break;
-	}
+		}
 }
 
 /*
@@ -903,20 +1270,59 @@ void _Drive::Task_Out()
 		ExtSRAMInterface.ExMem_Read_Bytes(zigbee_data, 8);
 		zigbee_judge = zigbee_data[6];                          //获取校验和
 		Command.Judgment(zigbee_data);                          //计算校验和
+		if (zigbee_data[2] == 0x86) {
+			BEEP.TurnOn();
+			delay(200);
+			roadWay[0] = zigbee_data[3];
+			roadWay[1] = zigbee_data[4];
+			roadWay[2] = zigbee_data[5];
+		}
+		if (zigbee_data[2] == 0x87) {
+			roadWay[3] = zigbee_data[3];
+			roadWay[4] = zigbee_data[4];
+			roadWay[5] = zigbee_data[5];
+		}
+		if (zigbee_data[2] == 0x88) {
+			roadWay[6] = zigbee_data[3];
+			roadWay[7] = zigbee_data[4];
+			roadWay[8] = zigbee_data[5];
+		}
+		if (zigbee_data[2] == 0x89) {
+			roadWay[9] = zigbee_data[3];
+			roadWay[10] = zigbee_data[4];
+			roadWay[11] = zigbee_data[5];
+		}
+		if (zigbee_data[2] == 0x90) {
+			roadWay[12] = zigbee_data[3];
+			roadWay[13] = zigbee_data[4];
+			roadWay[14] = zigbee_data[5];
+		}
+		if (zigbee_data[2] == 0x91) {
+			roadWay[15] = zigbee_data[3];
+			roadWay[16] = zigbee_data[4];
+			roadWay[17] = zigbee_data[5];
+		}
+		if (zigbee_data[2] == 0x92) {
+			roadWay[18] = zigbee_data[3];
+			roadWay[19] = zigbee_data[4];
+			roadWay[20] = zigbee_data[5];
+			BEEP.TurnOff();
+		}
+
 		if ((zigbee_judge == zigbee_data[6])&& (zigbee_judge != 0 && zigbee_data[2] == 0xcc)
 			&& (zigbee_data[0] == 0x55) && (zigbee_data[7] == 0xBB))
 		{
 			for (int j = 0; j < 6; j++)
 			{
-				ZigBee_back[2] = 0xC1;
+				ZigBee_back[2] = 0x31;
 				ExtSRAMInterface.ExMem_Write_Bytes(0x6080, ZigBee_back, 12);  //发送忙碌
 				delay(200);
-			}	 
+			}
 			Analyze_Handle(zigbee_data);                   //执行指令
 			//反馈任务结束标志
 			for (int j = 0; j < 6; j++)
 			{
-				ZigBee_back[2] = 0xD1;
+				ZigBee_back[2] = 0x41;
 				ExtSRAMInterface.ExMem_Write_Bytes(0x6080, ZigBee_back, 12);  //发送忙碌
 				delay(200);
 			}
